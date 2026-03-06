@@ -49,6 +49,7 @@ def search_markets(query, limit=50):
             })
     return out
 
+#compute volume weighted average price of filling
 def weighted_fill(levels,target):
     if target <= 0:
         return None
@@ -67,3 +68,25 @@ def weighted_fill(levels,target):
     if rem > 0 or shares ==0:
         return None
     return cost/shares
+
+def spread_at(book,size):
+    bids = sorted([(float(o["price"]),float(o["size"])) for o in book.get("bids",[])], reverse=True)
+    asks = sorted([(float(o["price"]),float(o["size"])) for o in book.get("asks",[])])
+
+    wa = weighted_fill(asks,size)
+    wb = weighted_fill(bids,size)
+    if wa is None or wb is None:
+        return None 
+    
+    bb = bids[0][0] if bids else None
+    aa = asks[0][0] if asks else None
+    
+    return {
+        "avg_ask": wa,
+        "avg_bid": wb,
+        "eff": wa-wb,
+        "raw": (bb,aa) if bb and aa else None
+        "bids": bb,
+        "ask" : aa,
+        
+        }
