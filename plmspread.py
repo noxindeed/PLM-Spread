@@ -16,6 +16,11 @@ def fetch_book(token_id):
     return r.json()
 
 #searching for markets (top 50)
+'''
+sidenote: the search filter is a simple substring match so it may return some false negatives
+if anyone is reading this, i reccommend using a more specific OR a direct copy pasted query
+to avoid such errors. also, the search is case insensitive so you can use any case you want.
+'''
 def search_markets(query, limit=50):
     r = requests.get(f"{GAMMA}/markets", params={"active":"true", "closed":"false","limit":limit,"order": "volume24hr", "ascending": "false"},timeout=10)
     r.raise_for_status()
@@ -44,4 +49,21 @@ def search_markets(query, limit=50):
             })
     return out
 
-)
+def weighted_fill(levels,target):
+    if target <= 0:
+        return None
+    rem = target 
+    cost = shares = 0.0
+    for price,size in levels:
+        c = price * size
+        if c >=rem:
+            shares += rem/price
+            cost += rem
+            rem = 0
+            break
+        cost += c
+        shares += size
+        rem -= c
+    if rem > 0 or shares ==0:
+        return None
+    return cost/shares
