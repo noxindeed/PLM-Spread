@@ -87,6 +87,8 @@ def spread_at(book,size):
         "eff": wa-wb,
         "raw": (bb,ba) if bb and ba else None,
         "bid": bb,
-        "ask" : aa,
+        "ask" : ba,
         
         }
+def spread_curve(book, depths):
+    return {d: spread_at(book, d) for d in depths}
