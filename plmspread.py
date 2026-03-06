@@ -79,14 +79,14 @@ def spread_at(book,size):
         return None 
     
     bb = bids[0][0] if bids else None
-    aa = asks[0][0] if asks else None
+    ba = asks[0][0] if asks else None
     
     return {
         "avg_ask": wa,
         "avg_bid": wb,
         "eff": wa-wb,
-        "raw": (bb,aa) if bb and aa else None
-        "bids": bb,
+        "raw": (bb,ba) if bb and ba else None,
+        "bid": bb,
         "ask" : aa,
         
         }
