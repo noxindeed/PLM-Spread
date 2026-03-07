@@ -147,3 +147,85 @@ def print_curve(curve, depths , ts):
             f"  {r['eff']:>11.4f}  {r['raw'] or 0:>8.4f}  {bar(r['eff'])}"
         )
         
+def parse_depths(raw):
+    try:
+        depths = [float(x.strip()) for x in raw.split(",")]
+        if any(d <= 0 for d in depths ):
+            raise ValueError
+        return sorted(depths)
+    except ValueError:
+        sys.exit("bad --depth value, expected e.g. 50, 200, 500")
+        
+def cmd_search(args):
+    results = search_markets(args.query, args.limit)
+    if not results:
+        print(f"nothing matched '{args.query}'")
+        return
+        print(f"\n{BOLD}{len(results)} markets matching '{args.query}'{RESET}\n")
+    for i, m in enumerate(results, 1):
+        print(f"{BOLD}{i}. {m['question']}{RESET}")
+        print(f"   vol24h=${m['vol24h']:,.0f}  liq=${m['liq']:,.0f}")
+        for outcome, tid, price in zip(m["outcomes"], m["token_ids"], m["prices"]):
+            p = f"{float(price):.3f}" if price else "n/a"
+            print(f"   {CYAN}{outcome}{RESET}  {p}  {YELLOW}{tid}{RESET}")
+        print()
+    print(f"{DIM}pmspread snapshot --token <id>  or  pmspread watch --token <id>{RESET}\n")
+
+def cmd_snapshot(args):
+    depths = parse_depths(args.depths)
+    book = fetch_book(args.token)
+    curve = spread_curve(book, depths)
+    bids = book.get("bids",[])
+    asks = book.get("asks",[])
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    
+    print(f"\n{BOLD}snapshot{RESET}  {CYAN}{args.token[:24]}...{RESET}  {DIM}{ts}{RESET}")
+    print(f"  {len(bids)} bid levels  {len(asks)} ask levels\n")
+
+    print(f"{BOLD}top bids{RESET}")
+    for o in sorted(bids, key=lambda x: -float(x["price"]))[:5]:
+        print(f"  {float(o['price']):.4f}  x  ${float(o['size']):.2f}")
+
+    print(f"\n{BOLD}top asks{RESET}")
+    for o in sorted(asks, key=lambda x: float(x["price"]))[:5]:
+        print(f"  {float(o['price']):.4f}  x  ${float(o['size']):.2f}")
+
+    print_curve(curve, depths, "spread curve")
+    
+def cmd_watch(args):
+    depths = parse_depths(args.depth)
+    mon = Monitor(depths, threshold=args.threshold)
+    n = 0
+
+    def on_sigint(sig, frame):
+        print(f"\n{DIM}stopped after {n} polls{RESET}\n")
+        sys.exit(0)
+
+    signal.signal(signal.SIGINT, on_sigint)
+    print(f"{BOLD}pmspread watch{RESET}  {CYAN}{args.token}{RESET}")
+    print(f"interval={args.interval}s  depths={depths}  alert={args.threshold}x\n")
+
+    while True:
+        try:
+            book = fetch_book(args.token)
+            curve = spread_curve(book, depths)
+            alerts = mon.update(curve)
+            print_curve(curve, depths, datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"))
+            if alerts:
+                for a in alerts:
+                    print(f"{RED}{BOLD}Liquidity alert:{RESET}")
+                    for a in alerts:
+                        print(f"{RED}  {a}{RESET}")
+            n += 1
+            time.sleep(args.interval)
+        except Exception as e:
+            print(f"{RED}http {e}{RESET}", file=sys.stderr)
+            time.sleep(args.interval)
+        except requests.ConnectionError:
+            print(f"{RED}connection lost, retrying in {args.interval}s{RESET}", file=sys.stderr)
+            time.sleep(args.interval)
+        except Exception as e:
+            print(f"{RED}{e}{RESET}", file=sys.stderr)
+            raise
+            
+            
