@@ -92,3 +92,26 @@ def spread_at(book,size):
         }
 def spread_curve(book, depths):
     return {d: spread_at(book, d) for d in depths}
+
+#anamoly detection to catch liquidity shocks 
+class Monitor:
+    def __init__(self,depths, window=20,threshold=2.0):
+        self.threshold = threshold
+        self.hist={d: deque(maxlen=window) for d in depths}
+        
+    def update(self,curve):
+        alerts=[]
+        for size, r in curve.items():
+            if r is None:
+                continue 
+            s = r["eff"]
+            h = self.hist[size]
+            if len(h)>=5:
+                med = sorted(h)[len(h)//2]
+                if med >0 and s>self.threshold*med:
+                    alerts.append(
+                        f"  [!] ${size:.0f}: spread {s:.4f} = {s/med:.1f}x median ({med:.4f})"
+                        )
+            h.append(s)
+        return alerts    
+                    
