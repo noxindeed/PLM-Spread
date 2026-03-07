@@ -1,0 +1,9 @@
+README.md
+pyproject.toml
+setup.py
+plm_spread.egg-info/PKG-INFO
+plm_spread.egg-info/SOURCES.txt
+plm_spread.egg-info/dependency_links.txt
+plm_spread.egg-info/entry_points.txt
+plm_spread.egg-info/requires.txt
+plm_spread.egg-info/top_level.txt
