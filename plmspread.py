@@ -5,7 +5,7 @@ import time
 import signal 
 from datetime import datetime,timezone
 import requests 
-
+from collections import deque
 CLOB = "https://clob.polymarket.com"
 GAMMA = "https://gamma-api.polymarket.com"
 
@@ -106,6 +106,8 @@ class Monitor:
                 continue 
             s = r["eff"]
             h = self.hist[size]
+            if h is None:
+                continue
             if len(h)>=5:
                 med = sorted(h)[len(h)//2]
                 if med >0 and s>self.threshold*med:
