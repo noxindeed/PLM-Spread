@@ -6,8 +6,17 @@ import signal
 from datetime import datetime,timezone
 import requests 
 from collections import deque
+
 CLOB = "https://clob.polymarket.com"
 GAMMA = "https://gamma-api.polymarket.com"
+
+RESET  = "\033[0m"
+BOLD   = "\033[1m"
+RED    = "\033[91m"
+YELLOW = "\033[93m"
+GREEN  = "\033[92m"
+CYAN   = "\033[96m"
+DIM    = "\033[2m"
 
 #fetching order books for a token
 def fetch_book(token_id):
@@ -85,7 +94,7 @@ def spread_at(book,size):
         "avg_ask": wa,
         "avg_bid": wb,
         "eff": wa-wb,
-        "raw": (bb,ba) if bb and ba else None,
+        "raw": ba - bb if bb and ba else None,
         "bid": bb,
         "ask" : ba,
         
@@ -117,3 +126,24 @@ class Monitor:
             h.append(s)
         return alerts    
                     
+
+#bar func for display and also the table printer
+def bar(spread, cap=0.10, w=20):
+    n = int(min(spread/cap,1.0)*w)
+    col = GREEN if spread <0.02 else YELLOW if spread <0.05 else RED
+    return col + "█"*n + DIM + "░"*(w-n)+RESET
+
+def print_curve(curve, depths , ts):
+    print(f"\n{BOLD}{CYAN}{ts}{RESET}")
+    print(f"  {'Depth':>8}  {'Bid':>8}  {'Ask':>8}  {'Eff Spread':>11}  {'Raw':>8}  Bar")
+    print("  " + "-" * 64)
+    for d in depths:
+        r = curve.get(d)
+        if r is None:
+            print(f"  {d:>8.0f}  {'--':>8}  {'--':>8}  {'thin':>11}")
+            continue
+        print(
+            f"  {d:>8.0f}  {r['bid']:>8.4f}  {r['ask']:>8.4f}"
+            f"  {r['eff']:>11.4f}  {r['raw'] or 0:>8.4f}  {bar(r['eff'])}"
+        )
+        
