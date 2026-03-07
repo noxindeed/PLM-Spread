@@ -227,5 +227,39 @@ def cmd_watch(args):
         except Exception as e:
             print(f"{RED}{e}{RESET}", file=sys.stderr)
             raise
-            
+
+def main():
+    p = argparse.ArgumentParser(prog="plmspread")
+    sub = p.add_subparsers(dest="cmd", required=True)
+    
+    s = sub.add_parser("search", help="find markets + token IDs")
+    s.add_argument("query")
+    s.add_argument("--limit", "-l",type=int, default=50, metavar="N", help="max results to return")
+    
+    sn = sub.add_parser("snapshot", help="fetch order book and spread curve for a token")
+    sn.add_argument("--token", "-t", required=True,metavar="ID", help="token ID to fetch")
+    sn.add_argument("--depths", "-d", default="50,200,500", metavar="SIZES", help="comma separated list of depth levels to compute spread at")
+    
+    w = sub.add_parser("watch", help="live polling with alerts")
+    w.add_argument("--token", "-t", required=True, metavar="ID")
+    w.add_argument("--depth", "-d", default="50,200,500", metavar="SIZES")
+    w.add_argument("--interval", "-i", type=int, default=30, metavar="S")
+    w.add_argument("--alert-threshold", "-a", type=float, default=2.0,dest="threshold", metavar="X")
+    
+    args = p.parse_args()
+
+    try:
+        {"search": cmd_search, "snapshot": cmd_snapshot, "watch": cmd_watch}[args.cmd](args)
+    except requests.HTTPError as e:
+        code = e.response.status_code if e.response is not None else "?"
+        if code == 404:
+            sys.exit("token not found - run 'pmspread search <query>' first")
+        sys.exit(f"http error {code}: {e}")
+    except requests.ConnectionError:
+        sys.exit("can't reach polymarket - check connection")
+
+
+if __name__ == "__main__":
+    main()
+
             
